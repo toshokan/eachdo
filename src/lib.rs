@@ -1,7 +1,13 @@
 use std::path;
+use std::io::{Read, BufReader};
+
+pub enum InputType {
+    Stdin,
+    File(path::PathBuf)
+}
 
 pub struct Config {
-    pub filename: Option<path::PathBuf>,
+    pub input_type: InputType
 }
 
 impl Config {
@@ -17,27 +23,16 @@ impl Config {
                  .takes_value(true))
             .get_matches();
 
-        let mut filename = None;
+        let mut input_type = InputType::Stdin;
 
         if matches.is_present("file") {
-            if let Some(provided_filename) = matches.value_of("file") {
-                filename = Some(path::PathBuf::from(provided_filename));
+            if let Some(file) = matches.value_of("file") {
+                input_type = InputType::File(path::PathBuf::from(file));
             }
         }
 
         Config {
-            filename
+            input_type
         }
     }
 }
-
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
-
-
