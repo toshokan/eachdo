@@ -1,5 +1,6 @@
 use std::path;
-use std::io::{Read, BufReader};
+use std::io;
+use std::io::{BufRead, BufReader};
 
 pub enum InputType {
     Stdin,
@@ -7,7 +8,8 @@ pub enum InputType {
 }
 
 pub struct Config {
-    pub input_type: InputType
+    pub input_type: InputType,
+    pub delimiter: char,
 }
 
 impl Config {
@@ -21,6 +23,13 @@ impl Config {
                  .value_name("FILE")
                  .help("Read input from FILE rather than stdin")
                  .takes_value(true))
+            .arg(clap::Arg::with_name("delimiter")
+                 .short("d")
+                 .long("delimiter")
+                 .value_name("BYTE")
+                 .takes_value(true)
+                 .default_value("\n")
+                 .help("Split input by BYTE"))
             .get_matches();
 
         let mut input_type = InputType::Stdin;
@@ -32,7 +41,34 @@ impl Config {
         }
 
         Config {
-            input_type
+            input_type,
+            delimiter: matches.value_of("delimiter").unwrap_or("\n").chars().next().unwrap()
         }
+    }
+}
+
+pub struct InputStream {
+    pub stream: Box<dyn BufRead>,
+}
+
+impl InputStream {
+    pub fn new(input_type: &InputType) -> InputStream {
+        let stream: Box<dyn BufRead> = match input_type {
+            InputType::File(filename) => {
+                let f = std::fs::File::open(filename)
+                    .expect("Error opening file");
+
+                Box::from(BufReader::new(f))
+            },
+            InputType::Stdin => Box::from(BufReader::new(io::stdin())),
+        };
+
+        InputStream {
+            stream
+        }
+    }
+
+    pub fn iter(self, delim: char) -> Box<dyn Iterator<Item=String>> {
+        Box::from(self.stream.split(delim as u8).map(move |line| String::from_utf8(line.unwrap()).unwrap()).into_iter())
     }
 }
