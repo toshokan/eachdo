@@ -1,17 +1,30 @@
-extern crate eachdo;
-extern crate clap;
+use eachdo::{
+    config::{InputType, Config},
+    Stream, FileInput, StdinInput, InputStream,
+};
 
-use std::io;
-use std::io::{BufRead, BufReader};
-use eachdo::{Config, InputType, InputStream};
-
-fn main() {
+fn main() -> std::io::Result<()> {
     let config = Config::new();
-    let input_stream = InputStream::new(&config.input_type);
+    let delim = config.delimiter;
+    match config.input_type {
+        InputType::File(path) => {
+            let stream = Stream::from(
+                FileInput::new(path, delim)?
+            );
+            handle_input(stream);
+        }
+        _ => {
+            let stream = Stream::from(
+                StdinInput::new(delim)
+            );
+            handle_input(stream);
+        }
+    };
+    Ok(())
+}
 
-    for line in input_stream.iter(config.delimiter) {
-        println!("{}", line)
+fn handle_input<T: InputStream>(mut stream: Stream<T>) {
+    while let Some(line) = stream.next() {
+        print!("{}", line);
     }
-    
-    println!("Done!");
 }
